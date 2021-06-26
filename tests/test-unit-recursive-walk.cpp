@@ -3,5 +3,5 @@
 #include "recursive_walk.hpp"
 
 TEST(SomeTest, TestTest) {
-    RecursiveWalking("C:/Program Files (x86)");
+    RecursiveWalking("C:/Program Files (x86)", 2);
 }

@@ -2,4 +2,4 @@
 
 #include "stdafx.hpp"
 
-void RecursiveWalking(const fs::path& initial_path);
+void RecursiveWalking(const fs::path& initial_path, int16_t deep = -1);
