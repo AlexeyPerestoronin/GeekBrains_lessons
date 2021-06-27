@@ -6,6 +6,7 @@
 #include <fstream>
 
 class RecursiveWalkingTesting : public testing::Test {
+    std::vector<std::string> _extensions{ ".txt", ".json", ".jaml", ".md" };
     std::optional<fs::path> _test_directory;
 
     void _CreateTestCatalog(const fs::path& dir, size_t deep, size_t catalogs, size_t files) {
@@ -18,9 +19,21 @@ class RecursiveWalkingTesting : public testing::Test {
         }
 
         for (size_t i = 1; i <= files; ++i) {
-            fs::path file_path = fs::path(dir).append(std::string("file_").append(std::to_string(i)));
+            fs::path file_path = fs::path(dir).append(std::string("file_").append(std::to_string(i)).append(_extensions[std::rand() % _extensions.size()]));
             std::fstream(file_path.string(), std::ios_base::app).close();
         }
+    }
+
+    public: // testing::Test
+    // Sets up the test fixture.
+    virtual void SetUp() override {
+        std::srand(std::time(nullptr));
+    }
+
+    // Tears down the test fixture.
+    virtual void TearDown() override {
+        if (_test_directory.has_value())
+            fs::remove_all(_test_directory.value());
     }
 
     public:
@@ -42,23 +55,36 @@ class RecursiveWalkingTesting : public testing::Test {
             throw std::exception("test directory isn't created");
         return _test_directory.value();
     }
-
-    public: // testing::Test
-    // Tears down the test fixture.
-    virtual void TearDown() override {
-        if (_test_directory.has_value())
-            fs::remove_all(_test_directory.value());
-    }
 };
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght) {
     size_t deep = 4;
     CreateTestCatalogsTree(deep, 2, 2);
-    RecursiveWalking(GetTestDirectory(), deep, WALK_TYPE::LENGTH);
+    fs::path test_dirrectory = GetTestDirectory();
+    size_t test_dirrectory_size = test_dirrectory.string().size();
+    RecursiveWalking(deep, WALK_TYPE::LENGTH).WalkIn(test_dirrectory, [&](size_t deep, const fs::path& full_file_path) {
+        if (full_file_path.extension().string().compare(".json") == 0)
+            std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, test_dirrectory_size, "") << std::endl;
+    });
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth) {
     size_t deep = 4;
     CreateTestCatalogsTree(deep, 2, 2);
-    RecursiveWalking(GetTestDirectory(), deep, WALK_TYPE::WIDTH);
+    fs::path test_dirrectory = GetTestDirectory();
+
+    class Action {
+        size_t _file_path_length;
+
+        public:
+        Action(size_t file_path_lenght)
+            : _file_path_length{ file_path_lenght } {}
+
+        void operator()(size_t deep, const fs::path& full_file_path) {
+            if (full_file_path.extension().string().compare(".md") == 0)
+                std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _file_path_length, "") << std::endl;
+        }
+    };
+
+    RecursiveWalking(deep, WALK_TYPE::WIDTH).WalkIn(test_dirrectory, Action(test_dirrectory.string().size()));
 }
