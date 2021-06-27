@@ -2,9 +2,6 @@
 
 #include "recursive_walk.hpp"
 
-#include <optional>
-#include <fstream>
-
 class RecursiveWalkingTesting : public testing::Test {
     std::vector<std::string> _extensions{ ".txt", ".json", ".jaml", ".md" };
     std::optional<fs::path> _test_directory;
@@ -62,9 +59,15 @@ TEST_F(RecursiveWalkingTesting, WalkTestOnLenght) {
     CreateTestCatalogsTree(deep, 2, 2);
     fs::path test_dirrectory = GetTestDirectory();
     size_t test_dirrectory_size = test_dirrectory.string().size();
+
+    std::mutex cout_mutex;
     RecursiveWalking(deep, WALK_TYPE::LENGTH).WalkIn(test_dirrectory, [&](size_t deep, const fs::path& full_file_path) {
-        if (full_file_path.extension().string().compare(".json") == 0)
-            std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, test_dirrectory_size, "") << std::endl;
+        if (full_file_path.extension().string().compare(".json") == 0) {
+            cout_mutex.lock();
+            std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, test_dirrectory_size, "")
+                      << " id: " << std::this_thread::get_id() << std::endl;
+            cout_mutex.unlock();
+        }
     });
 }
 
@@ -73,18 +76,27 @@ TEST_F(RecursiveWalkingTesting, WalkTestOnWidth) {
     CreateTestCatalogsTree(deep, 2, 2);
     fs::path test_dirrectory = GetTestDirectory();
 
+    std::mutex cout_mutex;
+
     class Action {
+        // (?) - Why we must use use reference type for std::mutex
+        std::mutex& _cout_mutex;
         size_t _file_path_length;
 
         public:
-        Action(size_t file_path_lenght)
-            : _file_path_length{ file_path_lenght } {}
+        Action(size_t file_path_lenght, std::mutex& cout_mutex)
+            : _file_path_length{ file_path_lenght }
+            , _cout_mutex{ cout_mutex } {}
 
         void operator()(size_t deep, const fs::path& full_file_path) {
-            if (full_file_path.extension().string().compare(".md") == 0)
-                std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _file_path_length, "") << std::endl;
+            if (full_file_path.extension().string().compare(".md") == 0) {
+                _cout_mutex.lock();
+                std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _file_path_length, "")
+                          << " id: " << std::this_thread::get_id() << std::endl;
+                _cout_mutex.unlock();
+            }
         }
     };
 
-    RecursiveWalking(deep, WALK_TYPE::WIDTH).WalkIn(test_dirrectory, Action(test_dirrectory.string().size()));
+    RecursiveWalking(deep, WALK_TYPE::WIDTH).WalkIn(test_dirrectory, Action(test_dirrectory.string().size(), cout_mutex));
 }
