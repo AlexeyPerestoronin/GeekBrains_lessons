@@ -5,6 +5,8 @@ You will learn from this course:
 * get acquainted with the namespace `std:: filesystem` in C++17.  
 * learn how to use 4 ways of code parallelization.  
 ***
+All material can be found this: https://onedrive.live.com/?authkey=%21AJmMTpMiNU0IJks&id=81DDEC6BD4DE0C58%21189234&cid=81DDEC6BD4DE0C58
+***
 
 ## step-1
 We create a simple function that recursively traverses the directories of the file system starting from some initial directory and outputs all the files found to the console.  
@@ -41,3 +43,8 @@ Makes improvements:
 Upgrading the code:  
 * replacing the `std::future` parallelization implementation with **SLT-algorithms**.  
 * improving the tests: adding the output of the number of threads involved.  
+
+## step-9
+Makes improvements:  
+* making the method of implementing parallelization a configurable template parameter.  
+* improving tests: compare the speed of different parallelization methods.  
