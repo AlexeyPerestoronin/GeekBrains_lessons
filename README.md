@@ -30,3 +30,9 @@ Makes improvements:
 
 ## step-6
 * multithreaded implementation.  
+
+## step-7
+Makes improvements:  
+* creating a list type that is resistant to adding and extracting data.  
+* we use `std::atomic` for tracking the presence of divided work.  
+* replacing the implementation of parallelization from `std::thread` to `std::future`.  
