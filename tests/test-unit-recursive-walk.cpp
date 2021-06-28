@@ -29,9 +29,20 @@ class RecursiveWalkingTesting : public testing::Test {
 
     // Tears down the test fixture.
     virtual void TearDown() override {
+        for (auto [i, it] = std::make_tuple(1ui32, thread_ids.begin()); i <= thread_ids.size(); ++i, ++it)
+            std::cout << "\n" << i << ") " << *it;
+        std::cout << std::endl;
+
         if (_test_directory.has_value())
             fs::remove_all(_test_directory.value());
     }
+
+    public:
+    using SetID = std::set<std::thread::id>;
+
+    public:
+    std::mutex cout_mutex;
+    SetID thread_ids;
 
     public:
     /**
@@ -60,12 +71,13 @@ TEST_F(RecursiveWalkingTesting, WalkTestOnLenght) {
     fs::path test_dirrectory = GetTestDirectory();
     size_t test_dirrectory_size = test_dirrectory.string().size();
 
-    std::mutex cout_mutex;
     RecursiveWalking(deep, WALK_TYPE::LENGTH).WalkIn(test_dirrectory, [&](size_t deep, const fs::path& full_file_path) {
         if (full_file_path.extension().string().compare(".json") == 0) {
             cout_mutex.lock();
+            std::thread::id current_id = std::this_thread::get_id();
             std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, test_dirrectory_size, "")
-                      << " id: " << std::this_thread::get_id() << std::endl;
+                      << " id: " << current_id << std::endl;
+            thread_ids.emplace(std::move(current_id));
             cout_mutex.unlock();
         }
     });
@@ -76,27 +88,29 @@ TEST_F(RecursiveWalkingTesting, WalkTestOnWidth) {
     CreateTestCatalogsTree(deep, 2, 2);
     fs::path test_dirrectory = GetTestDirectory();
 
-    std::mutex cout_mutex;
-
     class Action {
         // (?) - Why we must use use reference type for std::mutex
         std::mutex& _cout_mutex;
         size_t _file_path_length;
+        SetID& _thread_ids;
 
         public:
-        Action(size_t file_path_lenght, std::mutex& cout_mutex)
+        Action(size_t file_path_lenght, std::mutex& cout_mutex, SetID& thread_ids)
             : _file_path_length{ file_path_lenght }
-            , _cout_mutex{ cout_mutex } {}
+            , _cout_mutex{ cout_mutex }
+            , _thread_ids{ thread_ids } {}
 
         void operator()(size_t deep, const fs::path& full_file_path) {
             if (full_file_path.extension().string().compare(".md") == 0) {
                 _cout_mutex.lock();
+                std::thread::id current_id = std::this_thread::get_id();
                 std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _file_path_length, "")
-                          << " id: " << std::this_thread::get_id() << std::endl;
+                          << " id: " << current_id << std::endl;
+                _thread_ids.emplace(std::move(current_id));
                 _cout_mutex.unlock();
             }
         }
     };
 
-    RecursiveWalking(deep, WALK_TYPE::WIDTH).WalkIn(test_dirrectory, Action(test_dirrectory.string().size(), cout_mutex));
+    RecursiveWalking(deep, WALK_TYPE::WIDTH).WalkIn(test_dirrectory, Action(test_dirrectory.string().size(), cout_mutex, thread_ids));
 }

@@ -36,3 +36,8 @@ Makes improvements:
 * creating a list type that is resistant to adding and extracting data.  
 * we use `std::atomic` for tracking the presence of divided work.  
 * replacing the implementation of parallelization from `std::thread` to `std::future`.  
+
+## step-8
+Upgrading the code:  
+* replacing the `std::future` parallelization implementation with **SLT-algorithms**.  
+* improving the tests: adding the output of the number of threads involved.  
