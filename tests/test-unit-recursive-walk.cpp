@@ -66,7 +66,7 @@ class RecursiveWalkingTesting : public testing::Test {
 
     public:
     static size_t GetDeep() {
-        return 10;
+        return 5;
     }
 
     /**

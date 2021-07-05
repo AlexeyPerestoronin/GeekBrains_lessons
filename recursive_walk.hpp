@@ -1,7 +1,7 @@
 #pragma once
 
 #include "stdafx.hpp"
-#include "thread_safe_list.hpp"
+#include "thread_safe_container.hpp"
 
 enum class WALK_TYPE : uint8_t { LENGTH, WIDTH };
 
@@ -29,7 +29,7 @@ class RecursiveWalking {
             throw std::exception("initial directory is not OS catalog");
 
         using UnchekedDirectory = std::tuple<size_t, fs::directory_entry>;
-        ThreadSafeList<UnchekedDirectory> unchecked_directories{ { 0, initial_dir } };
+        ThreadSafeVector<UnchekedDirectory> unchecked_directories{ { 0, initial_dir } };
 
         std::atomic<uint8_t> walker_counter;
         auto Walker = [&](uint8_t /*stub*/ = 0ui8) {
@@ -44,9 +44,9 @@ class RecursiveWalking {
                             } else {
                                 UnchekedDirectory unchecked_element = std::make_tuple(current_deep + 1, sub_dir);
                                 if (_type == WALK_TYPE::LENGTH) {
-                                    unchecked_directories.emplace_front(std::move(unchecked_element));
+                                    unchecked_directories.EmplaceFront(std::move(unchecked_element));
                                 } else if (_type == WALK_TYPE::WIDTH) {
-                                    unchecked_directories.emplace_back(std::move(unchecked_element));
+                                    unchecked_directories.EmplaceBack(std::move(unchecked_element));
                                 } else {
                                     throw std::exception("unknown type of walk through OS catalogs");
                                 }

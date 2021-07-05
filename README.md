@@ -48,3 +48,7 @@ Upgrading the code:
 Makes improvements:  
 * making the method of implementing parallelization a configurable template parameter.  
 * improving tests: compare the speed of different parallelization methods.  
+
+## step-10
+Makes preparatory improvements:
+* ThreadSafeList-class transformed to ThreadSafeVecrot-class
