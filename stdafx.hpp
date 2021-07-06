@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <future>
+#include <memory>
 #include <thread>
 #include <fstream>
 #include <optional>

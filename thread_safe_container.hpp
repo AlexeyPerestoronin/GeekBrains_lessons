@@ -15,16 +15,29 @@ class ThreadSafeContainer : protected ContainerType<ElementType> {
     static constexpr bool IsBasedOf_V = IsBasedOf<_ContainerType>::value;
 #pragma endregion inner types and aliases
 
-    std::mutex _access{};
-#define GET_LOCK std::lock_guard _lock(_access);
+    std::shared_ptr<std::mutex> _access_mutex_ptr{};
+
+    void LockAccess() {
+        std::lock_guard _lock(*_access_mutex_ptr.get());
+    }
+
+#define GET_LOCK LockAccess(); std::lock_guard _lock(*_access_mutex_ptr.get());
 
     public:
     ThreadSafeContainer(std::initializer_list<ElementType> args)
-        : BaseType(args){};
+        : BaseType(args)
+        , _access_mutex_ptr{ std::make_shared<std::mutex>() } {}
 
     template<class... ArgsTypes>
     ThreadSafeContainer(ArgsTypes&&... args)
-        : BaseType(std::forward<ArgsTypes>(args)...) {}
+        : BaseType(std::forward<ArgsTypes>(args)...)
+        , _access_mutex_ptr{std::make_shared<std::mutex>()} {}
+
+    // TODO: DF
+    virtual ~ThreadSafeContainer() {
+        bool _1;
+    }
+    // TODO: DT
 
     OptElementType ExtractFront() noexcept {
         GET_LOCK
@@ -66,6 +79,27 @@ class ThreadSafeContainer : protected ContainerType<ElementType> {
         } else {
             static_assert(false, "EmplaceBack-method cannot be used with currently defined ContainerType-type");
         }
+    }
+
+    decltype(auto) GetBeginIt() {
+        GET_LOCK
+        return BaseType::begin();
+    }
+
+    decltype(auto) GetEndIt() {
+        GET_LOCK
+        return BaseType::end();
+    }
+
+    size_t GetSize() {
+        GET_LOCK
+        return BaseType::size();
+    }
+
+    void Reserve(size_t reserved_size) {
+        GET_LOCK
+        if constexpr (IsBasedOf_V<std::vector>)
+            BaseType::reserve(reserved_size);
     }
 
 #undef GET_LOCK;
