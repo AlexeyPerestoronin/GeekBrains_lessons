@@ -91,12 +91,13 @@ class RecursiveWalkingTesting : public testing::Test {
 
     void PrintingTreeCatalogs(size_t deep, const fs::path& full_file_path) {
         if (full_file_path.extension().string().compare(".json") == 0) {
-            //cout_mutex.lock();
-            //std::thread::id current_id = std::this_thread::get_id();
-            ///*std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _test_dirrectory_size, "")
-            //          << " id: " << current_id << std::endl;*/
-            //thread_ids.emplace(std::move(current_id));
-            //cout_mutex.unlock();
+            std::thread::id current_id = std::this_thread::get_id();
+            {
+                std::lock_guard locker(cout_mutex);
+                std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _test_dirrectory_size, "")
+                          << " id: " << current_id << std::endl;
+            }
+            thread_ids.emplace(std::move(current_id));
         }
     }
 #pragma endregion target

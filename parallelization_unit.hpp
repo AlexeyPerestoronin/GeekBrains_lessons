@@ -22,28 +22,28 @@ class ParallelizationUnit {
     template<class ActionType>
     void _RunThreadsByStdThread(ActionType&& action) {
         for (size_t i{ 0 }; i < _threads_quantity; ++i) {
-            ThreadStatusTypeShrPtr tsPtr = _threads.EmplaceBack(std::make_shared<ThreadStatusType>());
-            std::thread(action, tsPtr).detach();
+            ThreadStatusTypeShrPtr tsPtr = _threads.emplace_back(std::make_shared<ThreadStatusType>());
+            std::thread(action, std::move(tsPtr)).detach();
         }
     }
 
     template<class ActionType>
     void _RunThreadsByStdAsync(ActionType&& action) {
         for (size_t i{ 0 }; i < _threads_quantity; ++i) {
-            ThreadStatusTypeShrPtr tsPtr = _threads.EmplaceBack(std::make_shared<ThreadStatusType>());
-            std::async(std::launch::async, action, tsPtr);
+            ThreadStatusTypeShrPtr tsPtr = _threads.emplace_back(std::make_shared<ThreadStatusType>());
+            std::async(std::launch::async, action, std::move(tsPtr));
         }
     }
 
     template<class ActionType>
     void _RunThreadsByStdAlgorithm(ActionType&& action) {
         for (size_t i{ 0 }; i < _threads_quantity; ++i)
-            _threads.EmplaceBack(std::make_shared<ThreadStatusType>());
-        std::thread([&]() { std::for_each(std::execution::par, _threads.GetBeginIt(), _threads.GetEndIt(), action); }).detach();
+            _threads.emplace_back(std::make_shared<ThreadStatusType>());
+        std::thread([&]() { std::for_each(std::execution::par, _threads.begin(), _threads.end(), action); }).detach();
     }
 
     void _WaitWhileAllLaunched() {
-        for (auto it_b = _threads.GetBeginIt(), it_e = _threads.GetEndIt();
+        for (auto it_b = _threads.begin(), it_e = _threads.end();
              std::find_if_not(it_b, it_e, [](const ThreadStatusTypeShrPtr&st_ptr) { return st_ptr->th_id.has_value(); }) != it_e;
              /* INFINITY */)
             std::this_thread::yield();
@@ -52,9 +52,9 @@ class ParallelizationUnit {
     template<class ActionType>
     ParallelizationUnit(const size_t threads_quantity, ActionType&& action)
         : _threads_quantity(threads_quantity) {
-        _threads.Reserve(_threads_quantity);
+        _threads.reserve(_threads_quantity);
 
-        auto target_action = [&action, this](ThreadStatusTypeShrPtr ts_ptr) {
+        auto target_action = [&action, this](const ThreadStatusTypeShrPtr& ts_ptr) {
             ++this->_active_threads_counter;
             ts_ptr->th_id = std::this_thread::get_id();
             ts_ptr->result = action();
@@ -63,11 +63,11 @@ class ParallelizationUnit {
         };
 
         if constexpr (Base == PARALLELIZATION_BASE::STD_THREAD)
-            _RunThreadsByStdThread(target_action);
+            _RunThreadsByStdThread(std::move(target_action));
         else if constexpr (Base == PARALLELIZATION_BASE::STD_FUTURE)
-            _RunThreadsByStdAsync(target_action);
+            _RunThreadsByStdAsync(std::move(target_action));
         else if constexpr (Base == PARALLELIZATION_BASE::STL_ALGORITHMS)
-            _RunThreadsByStdAlgorithm(target_action);
+            _RunThreadsByStdAlgorithm(std::move(target_action));
         else
             static_assert(false, "target palatalization type is not implemented");
 
@@ -78,13 +78,13 @@ class ParallelizationUnit {
     ParallelizationUnit(ParallelizationUnit&&) noexcept = default;
 
     size_t GetLaunchedThreads() const {
-        return _threads.GetSize();
+        return _threads.size();
     }
 
     size_t GetActiveThreads() const {
-        size_t result;
-        for (const ThreadStatusTypeShrPtr ts_ptr : _threads)
-            if (!ts_ptr->is_finished)
+        size_t result{};
+        for (const auto& ts_ptr : _threads)
+            if (!static_cast<bool>(ts_ptr->is_finished))
                 ++result;
         return result;
     }

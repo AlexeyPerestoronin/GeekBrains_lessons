@@ -4,19 +4,48 @@
 
 auto& main_cout = std::cout;
 
-//ThreadSafeList<int32_t> int_list{};
+template<PARALLELIZATION_BASE Base>
+class ParallelExecutor_Tests : public testing::Test {
+    public:
+    void Test1() {
+        std::atomic<uint32_t> counter{ 0 };
+        ThreadSafeList<int32_t> int_list{};
+        auto Func = [](std::atomic<uint32_t>* const io_counter, ThreadSafeList<int32_t>* const io_int_list_ref) -> bool {
+            int32_t local_counter{ 0 };
+            while (++local_counter < INT8_MAX) {
+                io_int_list_ref->emplace_back(std::rand());
+                ++(*io_counter);
+            }
+            return true;
+        };
 
-TEST(Test1, Simple) {
-ThreadSafeList<int32_t> int_list{};
-    auto Func = [&](int _1, double _2) -> bool {
-        while (true) {
-            int_list.EmplaceBack(std::rand());
-            std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 1000));
-            main_cout << int_list.ExtractFront().value_or(-1);
-        }
-        return true;
-    };
+        size_t threads_quantity{ 32 };
 
-    ParallelExecutorTHD pe(2);
-    pe.Launch(Func, 4, 2).WaitWhileAllFinished<1000>();
+        ParallelExecutor<Base> pe(threads_quantity);
+        auto unit = pe.Launch(Func, &counter, &int_list);
+        unit.WaitWhileAllFinished<1000>();
+
+        ASSERT_EQ(unit.GetActiveThreads(), 0);
+        ASSERT_EQ(unit.GetLaunchedThreads(), threads_quantity);
+        ASSERT_EQ(static_cast<size_t>(counter), int_list.size());
+    }
+
+    void LaunchAllTests() {
+        Test1();
+    }
+};
+
+using PE_ByThreads = ParallelExecutor_Tests<PARALLELIZATION_BASE::STD_THREAD>;
+TEST_F(PE_ByThreads, Test) {
+    LaunchAllTests();
+}
+
+using PE_ByFuture = ParallelExecutor_Tests<PARALLELIZATION_BASE::STD_FUTURE>;
+TEST_F(PE_ByFuture, Test) {
+    LaunchAllTests();
+}
+
+using PE_ByAlg = ParallelExecutor_Tests<PARALLELIZATION_BASE::STD_FUTURE>;
+TEST_F(PE_ByAlg, Test) {
+    LaunchAllTests();
 }

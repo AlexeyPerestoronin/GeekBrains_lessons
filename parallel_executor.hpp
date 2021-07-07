@@ -18,7 +18,7 @@ class ParallelExecutor {
         using FunctionReturnType = std::result_of_t<FunctionType && (ArgsTypes && ...)>;
 
         auto action = std::bind(function, std::forward<ArgsTypes>(args)...);
-        return ParallelizationUnit<FunctionReturnType, Base>(_parallel_threads_quantity, action);
+        return ParallelizationUnit<FunctionReturnType, Base>(_parallel_threads_quantity, std::move(action));
     }
 };
 

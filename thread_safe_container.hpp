@@ -17,13 +17,10 @@ class ThreadSafeContainer : protected ContainerType<ElementType> {
 
     std::shared_ptr<std::mutex> _access_mutex_ptr{};
 
-    void LockAccess() {
-        std::lock_guard _lock(*_access_mutex_ptr.get());
-    }
-
-#define GET_LOCK LockAccess(); std::lock_guard _lock(*_access_mutex_ptr.get());
+#define GET_LOCK std::lock_guard _lock(*_access_mutex_ptr.get());
 
     public:
+#pragma region constructors / destructor
     ThreadSafeContainer(std::initializer_list<ElementType> args)
         : BaseType(args)
         , _access_mutex_ptr{ std::make_shared<std::mutex>() } {}
@@ -31,13 +28,12 @@ class ThreadSafeContainer : protected ContainerType<ElementType> {
     template<class... ArgsTypes>
     ThreadSafeContainer(ArgsTypes&&... args)
         : BaseType(std::forward<ArgsTypes>(args)...)
-        , _access_mutex_ptr{std::make_shared<std::mutex>()} {}
+        , _access_mutex_ptr{ std::make_shared<std::mutex>() } {}
 
-    // TODO: DF
     virtual ~ThreadSafeContainer() {
-        bool _1;
+        // TODO: breakpoint ...
     }
-    // TODO: DT
+#pragma endregion constructors / destructor
 
     OptElementType ExtractFront() noexcept {
         GET_LOCK
@@ -59,7 +55,7 @@ class ThreadSafeContainer : protected ContainerType<ElementType> {
     }
 
     template<class... ArgsTypes>
-    decltype(auto) EmplaceFront(ArgsTypes&&... args) {
+    decltype(auto) emplace_front(ArgsTypes&&... args) {
         GET_LOCK
         ElementType new_element(std::forward<ArgsTypes>(args)...);
         if constexpr (IsBasedOf_V<std::list>) {
@@ -67,36 +63,50 @@ class ThreadSafeContainer : protected ContainerType<ElementType> {
         } else if constexpr (IsBasedOf_V<std::vector>) {
             return BaseType::insert(BaseType::begin(), std::move(new_element));
         } else {
-            static_assert(false, "EmplaceFront-method cannot be used with currently defined ContainerType-type");
+            static_assert(false, "emplace_front-method cannot be used with currently defined ContainerType-type");
         }
     }
 
     template<class... ArgsTypes>
-    decltype(auto) EmplaceBack(ArgsTypes&&... args) {
+    decltype(auto) emplace_back(ArgsTypes&&... args) {
         GET_LOCK
         if constexpr (IsBasedOf_V<std::list> || IsBasedOf_V<std::vector>) {
             return BaseType::emplace_back(std::forward<ArgsTypes>(args)...);
         } else {
-            static_assert(false, "EmplaceBack-method cannot be used with currently defined ContainerType-type");
+            static_assert(false, "emplace_back-method cannot be used with currently defined ContainerType-type");
         }
     }
 
-    decltype(auto) GetBeginIt() {
+#pragma region iterator(s)
+    // TODO: (?) is it need implement thread-safe iterator-class
+
+    typename BaseType::iterator begin() noexcept {
         GET_LOCK
         return BaseType::begin();
     }
 
-    decltype(auto) GetEndIt() {
+    typename BaseType::const_iterator begin() const noexcept {
+        GET_LOCK
+        return BaseType::begin();
+    }
+
+    typename BaseType::iterator end() noexcept {
         GET_LOCK
         return BaseType::end();
     }
 
-    size_t GetSize() {
+    typename BaseType::const_iterator end() const noexcept {
+        GET_LOCK
+        return BaseType::end();
+    }
+#pragma endregion iterator(s)
+
+    size_t size() const {
         GET_LOCK
         return BaseType::size();
     }
 
-    void Reserve(size_t reserved_size) {
+    void reserve(size_t reserved_size) {
         GET_LOCK
         if constexpr (IsBasedOf_V<std::vector>)
             BaseType::reserve(reserved_size);
