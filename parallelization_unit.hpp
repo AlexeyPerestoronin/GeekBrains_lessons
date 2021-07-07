@@ -8,14 +8,23 @@ enum class PARALLELIZATION_BASE : uint8_t { STD_THREAD, STD_FUTURE, STL_ALGORITH
 template<PARALLELIZATION_BASE base>
 class ParallelExecutor;
 
-template<class ActionReturnType, PARALLELIZATION_BASE Base>
+// brief: parallelization unit created of an instance of ParallelExecutor-class
+// t-param: IsSafeMode - flag to control behaviour of destructor of the class
+// t-param: Base - target type to parallelization action
+// t-param: ActionType - data-type of target action for parallelization
+// note: IsSafeMode-template-option description
+// | If you extremely sure in quality of the action that you sent inside this class (see ActionType-template-parameter),
+// | you can not wait when all launched threads finish, in other case you must wait while they finished for avoided fatal terminate error.
+template<bool IsSafeMode, PARALLELIZATION_BASE Base, class ActionType>
 class ParallelizationUnit {
     friend class ParallelExecutor<Base>;
 
+    using ActionReturnType = std::result_of_t<ActionType()>;
     using ThreadStatusType = ThreadStatus<ActionReturnType>;
     using ThreadStatusTypeShrPtr = std::shared_ptr<ThreadStatusType>;
 
     size_t _threads_quantity{};
+    ActionType _parallelized_action;
     std::atomic<uint8_t> _active_threads_counter{};
     ThreadSafeVector<ThreadStatusTypeShrPtr> _threads{};
 
@@ -49,15 +58,15 @@ class ParallelizationUnit {
             std::this_thread::yield();
     }
 
-    template<class ActionType>
     ParallelizationUnit(const size_t threads_quantity, ActionType&& action)
-        : _threads_quantity(threads_quantity) {
+        : _threads_quantity(threads_quantity)
+        , _parallelized_action{ std::move(action) } {
         _threads.reserve(_threads_quantity);
 
-        auto target_action = [&action, this](const ThreadStatusTypeShrPtr& ts_ptr) {
+        auto target_action = [this](const ThreadStatusTypeShrPtr& ts_ptr) {
             ++this->_active_threads_counter;
             ts_ptr->th_id = std::this_thread::get_id();
-            ts_ptr->result = action();
+            ts_ptr->result = this->_parallelized_action();
             ts_ptr->is_finished = true;
             --this->_active_threads_counter;
         };
@@ -76,6 +85,11 @@ class ParallelizationUnit {
 
     public:
     ParallelizationUnit(ParallelizationUnit&&) noexcept = default;
+
+    ~ParallelizationUnit() {
+        if constexpr (IsSafeMode)
+            WaitWhileAllFinished<0>();
+    }
 
     size_t GetLaunchedThreads() const {
         return _threads.size();

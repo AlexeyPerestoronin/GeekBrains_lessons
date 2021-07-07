@@ -32,25 +32,23 @@ class RecursiveWalking {
         if (!static_cast<fs::directory_entry>(initial_dir).is_directory())
             throw std::exception("initial directory is not OS catalog");
 
-        auto Walker = [](
-                          size_t deep, WALK_TYPE type, WalkerCounter* counter_ptr /* pointer to shared counter_ptr of current active walk-job */,
-                          ListUnchekedDirectory* slud_ptr /* pointer to shared list unchecked directories */, const OptActionType* const action_ptr) -> bool {
-            std::atomic_uint8_t& walker_counter = *counter_ptr;
+        WalkerCounter walker_counter{};
+        ListUnchekedDirectory unchecked_directories{ { 0, initial_dir } };
+        auto Walker = [&]() -> bool {
             while (true) {
-                if (std::optional<UnchekedDirectory> unchecked_directory{ slud_ptr->ExtractFront() }; unchecked_directory.has_value()) {
+                if (std::optional<UnchekedDirectory> unchecked_directory{ unchecked_directories.ExtractFront() }; unchecked_directory.has_value()) {
                     ++walker_counter;
                     auto [current_deep, current_dir] = unchecked_directory.value();
                     for (const fs::directory_entry& sub_dir : fs::directory_iterator(current_dir, fs::directory_options::skip_permission_denied)) {
                         if (!sub_dir.is_directory()) {
-                            // TODO: too many checking of conditions
-                            if (action_ptr && action_ptr->has_value())
-                                action_ptr->value()(current_deep, sub_dir.path());
-                        } else if (current_deep < deep) {
+                            if (action.has_value())
+                                action.value()(current_deep, sub_dir.path());
+                        } else if (current_deep < _deep) {
                             UnchekedDirectory unchecked_element = std::make_tuple(current_deep + 1, sub_dir);
-                            if (type == WALK_TYPE::LENGTH) {
-                                slud_ptr->emplace_front(std::move(unchecked_element));
-                            } else if (type == WALK_TYPE::WIDTH) {
-                                slud_ptr->emplace_back(std::move(unchecked_element));
+                            if (_type == WALK_TYPE::LENGTH) {
+                                unchecked_directories.emplace_front(std::move(unchecked_element));
+                            } else if (_type == WALK_TYPE::WIDTH) {
+                                unchecked_directories.emplace_back(std::move(unchecked_element));
                             } else {
                                 throw std::exception("unknown type of walk through OS catalogs");
                             }
@@ -65,8 +63,6 @@ class RecursiveWalking {
             }
         };
 
-        WalkerCounter counter{};
-        ListUnchekedDirectory unchecked_directories{ { 0, initial_dir } };
-        ParallelExecutor<Base>{ _thread_quantity }.Launch(Walker, _deep, _type, &counter, &unchecked_directories, &action).WaitWhileAllFinished<1000>();
+        ParallelExecutor<Base>{ _thread_quantity }.Launch(Walker).WaitWhileAllFinished<1000>();
     }
 };
