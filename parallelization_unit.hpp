@@ -5,7 +5,7 @@
 
 enum class PARALLELIZATION_BASE : uint8_t { STD_THREAD, STD_FUTURE, STL_ALGORITHMS };
 
-template<PARALLELIZATION_BASE base>
+template<PARALLELIZATION_BASE Base>
 class ParallelExecutor;
 
 // brief: parallelization unit created of an instance of ParallelExecutor-class
@@ -19,7 +19,7 @@ template<bool IsSafeMode, PARALLELIZATION_BASE Base, class ActionType>
 class ParallelizationUnit {
     friend class ParallelExecutor<Base>;
 
-    using ActionReturnType = std::result_of_t<ActionType()>;
+    using ActionReturnType = std::invoke_result_t<ActionType>;
     using ThreadStatusType = ThreadStatus<ActionReturnType>;
     using ThreadStatusTypeShrPtr = std::shared_ptr<ThreadStatusType>;
 
@@ -66,7 +66,10 @@ class ParallelizationUnit {
         auto target_action = [this](const ThreadStatusTypeShrPtr& ts_ptr) {
             ++this->_active_threads_counter;
             ts_ptr->th_id = std::this_thread::get_id();
-            ts_ptr->result = this->_parallelized_action();
+            if constexpr (!std::is_same_v<ActionReturnType, void>)
+                ts_ptr->result = this->_parallelized_action();
+            else
+                this->_parallelized_action();
             ts_ptr->is_finished = true;
             --this->_active_threads_counter;
         };

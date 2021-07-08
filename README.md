@@ -50,5 +50,11 @@ Makes improvements:
 * improving tests: compare the speed of different parallelization methods.  
 
 ## step-10
-Makes preparatory improvements:
-* ThreadSafeList-class transformed to ThreadSafeVecrot-class
+Makes preparatory improvements:  
+* ThreadSafeList-class transformed to ThreadSafeVecrot-class  
+
+# step-11
+Makes significant changes in refactoring of code:  
+* creating ThreadSafeContainer-class from base of ThreadSafeList-class  
+* creating parallelization logic by unique logical connective of three classes: ParallelExecuror, ParallelizationUnit and ThreadStatus  
+* applying designed parallelization logic to RecursiveWalke-class  
