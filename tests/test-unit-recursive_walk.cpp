@@ -5,42 +5,37 @@
 class RecursiveWalkingTesting : public testing::Test {
     public:
     using SetID = std::set<std::thread::id>;
+    using Action = std::function<void(size_t, const fs::path)>;
 
     private:
     static std::optional<fs::path> _test_directory;
     static size_t _test_dirrectory_size;
+    std::mutex _cout_mutex;
+    SetID _thread_ids;
 
-    private:
-    std::mutex cout_mutex;
-    SetID thread_ids;
+    public:
+    Action action_with_file;
+    Action action_with_dir;
 
 #pragma region testing::Test
     public:
-    // Sets up the stuff shared by all tests in this test suite.
-    //
-    // Google Test will call Foo::SetUpTestSuite() before running the first
-    // test in test suite Foo.  Hence a sub-class can define its own
-    // SetUpTestSuite() method to shadow the one defined in the super
-    // class.
+    void SetUp() override {
+        action_with_file = std::bind(&RecursiveWalkingTesting::PrintingTree<'-'>, this, std::placeholders::_1, std::placeholders::_2);
+        action_with_dir = std::bind(&RecursiveWalkingTesting::PrintingTree<'*'>, this, std::placeholders::_1, std::placeholders::_2);
+    }
+
     static void SetUpTestSuite() {
         std::srand(std::time(nullptr));
         CreateTestCatalogsTree(GetDeep(), 5 /*catalogs*/, 5 /*files*/);
     }
 
-    // Tears down the stuff shared by all tests in this test suite.
-    //
-    // Google Test will call Foo::TearDownTestSuite() after running the last
-    // test in test suite Foo.  Hence a sub-class can define its own
-    // TearDownTestSuite() method to shadow the one defined in the super
-    // class.
     static void TearDownTestSuite() {
         if (_test_directory.has_value())
             fs::remove_all(_test_directory.value());
     }
 
-    // Tears down the test fixture.
-    virtual void TearDown() override {
-        for (auto [i, it] = std::make_tuple(1ui32, thread_ids.begin()); i <= thread_ids.size(); ++i, ++it)
+    void TearDown() override {
+        for (auto [i, it] = std::make_tuple(1ui32, _thread_ids.begin()); i <= _thread_ids.size(); ++i, ++it)
             std::cout << "\n" << i << ") " << *it;
         std::cout << std::endl;
     }
@@ -89,16 +84,15 @@ class RecursiveWalkingTesting : public testing::Test {
         return _test_directory.value();
     }
 
-    void PrintingTreeCatalogs(size_t deep, const fs::path& full_file_path) {
-        if (full_file_path.extension().string().compare(".json") == 0) {
-            std::thread::id current_id = std::this_thread::get_id();
-            {
-                std::lock_guard locker(cout_mutex);
-                std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, '-') << '>' << full_file_path.string().replace(0, _test_dirrectory_size, "")
-                          << " id: " << current_id << std::endl;
-            }
-            thread_ids.emplace(std::move(current_id));
+    template<char placeholder>
+    void PrintingTree(size_t deep, const fs::path& full_file_path) {
+        std::thread::id current_id = std::this_thread::get_id();
+        {
+            std::lock_guard locker(_cout_mutex);
+            std::cout << std::string(deep != 0 ? deep * 4 - 1 : 0, placeholder) << '>' << full_file_path.string().replace(0, _test_dirrectory_size, "")
+                      << " id: " << current_id << std::endl;
         }
+        _thread_ids.emplace(std::move(current_id));
     }
 #pragma endregion target
 }; // class RecursiveWalkingTesting
@@ -106,42 +100,28 @@ class RecursiveWalkingTesting : public testing::Test {
 std::optional<fs::path> RecursiveWalkingTesting::_test_directory{};
 size_t RecursiveWalkingTesting::_test_dirrectory_size{};
 
-// NOTE: walk on length tests
-
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght_STD_THREAD) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_THREAD>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), [&](size_t deep, const fs::path& dir) {
-        PrintingTreeCatalogs(deep, dir);
-    });
+    RecursiveWalking<PARALLELIZATION_BASE::STD_THREAD>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght_STD_FUTURE) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_FUTURE>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), [&](size_t deep, const fs::path& dir) {
-        PrintingTreeCatalogs(deep, dir);
-    });
+    RecursiveWalking<PARALLELIZATION_BASE::STD_FUTURE>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght_STL_ALGORITHMS) {
-    RecursiveWalking<PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), [&](size_t deep, const fs::path& dir) {
-        PrintingTreeCatalogs(deep, dir);
-    });
+    RecursiveWalking<PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 // NOTE: walk on width tests
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth_STD_THREAD) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_THREAD>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), [&](size_t deep, const fs::path& dir) {
-        PrintingTreeCatalogs(deep, dir);
-    });
+    RecursiveWalking<PARALLELIZATION_BASE::STD_THREAD>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth_STD_FUTURE) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_FUTURE>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), [&](size_t deep, const fs::path& dir) {
-        PrintingTreeCatalogs(deep, dir);
-    });
+    RecursiveWalking<PARALLELIZATION_BASE::STD_FUTURE>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth_STL_ALGORITHMS) {
-    RecursiveWalking<PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), [&](size_t deep, const fs::path& dir) {
-        PrintingTreeCatalogs(deep, dir);
-    });
+    RecursiveWalking<PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }

@@ -57,4 +57,10 @@ Makes preparatory improvements:
 Makes significant changes in refactoring of code:  
 * creating ThreadSafeContainer-class from base of ThreadSafeList-class  
 * creating parallelization logic by unique logical connective of three classes: ParallelExecuror, ParallelizationUnit and ThreadStatus  
-* applying designed parallelization logic to RecursiveWalke-class  
+* applying designed parallelization logic to RecursiveWalke-class 
+
+
+# step-12
+Make some improvements for RecursiveWalk-class:  
+* added action for directory  
+* changed test's cases for action with directory  

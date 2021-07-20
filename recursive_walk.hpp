@@ -7,26 +7,34 @@ enum class WALK_TYPE : uint8_t { LENGTH, WIDTH };
 
 template<PARALLELIZATION_BASE Base = PARALLELIZATION_BASE::STL_ALGORITHMS>
 class RecursiveWalking {
-    using WalkerCounter = std::atomic_uint8_t;
-    using ActionType = std::function<void(size_t /*deep*/, const fs::path& /*full_file_path*/)>;
-    using OptActionType = std::optional<ActionType>;
-    using UnchekedDirectory = std::tuple<size_t, fs::directory_entry>;
+    // clang-format off
+    using WalkerCounter         = std::atomic_uint8_t;
+    using UnchekedDirectory     = std::tuple<size_t, fs::directory_entry>;
     using ListUnchekedDirectory = ThreadSafeList<UnchekedDirectory>;
+    using ActionType            = std::function<void(size_t /*deep*/, const fs::path& /*full_file_path*/)>;
+    using OptActionType         = std::optional<ActionType>;
+    // clang-format on
 
     size_t _deep;
     WALK_TYPE _type;
     size_t _thread_quantity;
 
-    void _Walker(WalkerCounter& walker_counter, ListUnchekedDirectory& unchecked_directories, const OptActionType& action) const {
+    void _Walker(
+        WalkerCounter& walker_counter,
+        ListUnchekedDirectory& unchecked_directories,
+        const OptActionType& action_with_file,
+        const OptActionType& action_with_dir) const {
         while (true) {
             if (std::optional<UnchekedDirectory> unchecked_directory{ unchecked_directories.ExtractFront() }; unchecked_directory.has_value()) {
                 ++walker_counter;
                 auto [current_deep, current_dir] = unchecked_directory.value();
                 for (const fs::directory_entry& sub_dir : fs::directory_iterator(current_dir, fs::directory_options::skip_permission_denied)) {
                     if (!sub_dir.is_directory()) {
-                        if (action.has_value())
-                            action.value()(current_deep, sub_dir.path());
+                        if (action_with_file.has_value())
+                            action_with_file.value()(current_deep, sub_dir.path());
                     } else if (current_deep < _deep) {
+                        if (action_with_dir.has_value())
+                            action_with_dir.value()(current_deep, sub_dir.path());
                         UnchekedDirectory unchecked_element = std::make_tuple(current_deep + 1, sub_dir);
                         if (_type == WALK_TYPE::LENGTH) {
                             unchecked_directories.emplace_front(std::move(unchecked_element));
@@ -58,7 +66,7 @@ class RecursiveWalking {
             throw std::exception("quantity of parallel threads must be greater then zero");
     }
 
-    void WalkIn(const fs::path& catalog, const OptActionType& action = std::nullopt) {
+    void WalkIn(const fs::path& catalog, const OptActionType& action_with_file = std::nullopt, const OptActionType& action_with_dir = std::nullopt) {
         fs::directory_entry initial_dir{ catalog };
 
         if (!static_cast<fs::directory_entry>(initial_dir).is_directory())
@@ -67,7 +75,7 @@ class RecursiveWalking {
         WalkerCounter walker_counter{};
         ListUnchekedDirectory unchecked_directories{ { 0, initial_dir } };
         ParallelExecutor<Base>{ _thread_quantity }
-            .Launch(&RecursiveWalking::_Walker, this, std::ref(walker_counter), std::ref(unchecked_directories), action)
+            .Launch(&RecursiveWalking::_Walker, this, std::ref(walker_counter), std::ref(unchecked_directories), action_with_file, action_with_dir)
             .WaitWhileAllFinished<10>();
     }
 };
