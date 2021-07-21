@@ -101,27 +101,27 @@ std::optional<fs::path> RecursiveWalkingTesting::_test_directory{};
 size_t RecursiveWalkingTesting::_test_dirrectory_size{};
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght_STD_THREAD) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_THREAD>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
+    RecursiveWalking<WALK_TYPE::LENGTH, PARALLELIZATION_BASE::STD_THREAD>(GetDeep()).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght_STD_FUTURE) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_FUTURE>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
+    RecursiveWalking<WALK_TYPE::LENGTH, PARALLELIZATION_BASE::STD_FUTURE>(GetDeep()).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnLenght_STL_ALGORITHMS) {
-    RecursiveWalking<PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep(), WALK_TYPE::LENGTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
+    RecursiveWalking<WALK_TYPE::LENGTH, PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep()).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 // NOTE: walk on width tests
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth_STD_THREAD) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_THREAD>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
+    RecursiveWalking<WALK_TYPE::WIDTH, PARALLELIZATION_BASE::STD_THREAD>(GetDeep()).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth_STD_FUTURE) {
-    RecursiveWalking<PARALLELIZATION_BASE::STD_FUTURE>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
+    RecursiveWalking<WALK_TYPE::WIDTH, PARALLELIZATION_BASE::STD_FUTURE>(GetDeep()).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }
 
 TEST_F(RecursiveWalkingTesting, WalkTestOnWidth_STL_ALGORITHMS) {
-    RecursiveWalking<PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep(), WALK_TYPE::WIDTH).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
+    RecursiveWalking<WALK_TYPE::WIDTH, PARALLELIZATION_BASE::STL_ALGORITHMS>(GetDeep()).WalkIn(GetTestDirectory(), action_with_file, action_with_dir);
 }

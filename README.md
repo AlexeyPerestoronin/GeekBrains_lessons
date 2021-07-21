@@ -59,8 +59,12 @@ Makes significant changes in refactoring of code:
 * creating parallelization logic by unique logical connective of three classes: ParallelExecuror, ParallelizationUnit and ThreadStatus  
 * applying designed parallelization logic to RecursiveWalke-class 
 
-
 # step-12
 Make some improvements for RecursiveWalk-class:  
 * added action for directory  
-* changed test's cases for action with directory  
+* changed test's cases for action with directory 
+
+# step 13 
+Acceleration: 
+* the WALK_TYPE-parameter for RecursiveWalker-class has implemented as template parameter; 
+* the inner-private-method _Walker for has implemented as template too. 
